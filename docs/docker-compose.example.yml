@@ -1,6 +1,6 @@
 services:
   heeyaa:
-    image: ghcr.io/owner/heeyaa:latest
+    image: ghcr.io/eduardogonzalez/heeyaa:latest
     restart: unless-stopped
     environment:
       DISCORD_TOKEN: ${DISCORD_TOKEN:?Set DISCORD_TOKEN in your environment or .env file}
