@@ -9,8 +9,8 @@ from loguru import logger
 
 from audio_bot import AudioBotPy
 from settings import settings
-from src.utils import build_install_url
-from src.utils.audio import (
+from utils import build_install_url
+from utils.audio import (
     choose_audio_file,
     play_random_audio,
     should_play_random_sound,
@@ -90,37 +90,19 @@ async def on_voice_state_update(
 )
 @app_commands.guild_only()
 async def start(interaction: discord.Interaction) -> None:
-    if interaction.guild is None:
-        await interaction.response.send_message(
-            "Use this command inside a server.",
-            ephemeral=True,
-        )
-        return
+    await interaction.response.defer(ephemeral=True)
 
-    if not isinstance(interaction.user, discord.Member):
-        await interaction.response.send_message(
-            "I could not find your voice channel.",
-            ephemeral=True,
-        )
-        return
-
-    voice_state = interaction.user.voice
-    if voice_state is None or voice_state.channel is None:
-        await interaction.response.send_message(
-            "Join a voice channel first, then use /start.",
-            ephemeral=True,
-        )
+    voice_state = await _get_start_voice_state(interaction)
+    if voice_state is None or interaction.guild is None:
         return
 
     audio_file = choose_audio_file()
     if audio_file is None:
-        await interaction.response.send_message(
+        await interaction.followup.send(
             f"No audio files found in {settings.audio_dir}.",
             ephemeral=True,
         )
         return
-
-    await interaction.response.defer(ephemeral=True)
 
     voice_client = interaction.guild.voice_client
     try:
@@ -148,11 +130,15 @@ async def start(interaction: discord.Interaction) -> None:
         )
         return
 
+    if not await _play_start_sound(interaction, voice_client):
+        return
+
     playback_tasks[interaction.guild.id] = bot.loop.create_task(
         _random_sound_loop(interaction.guild.id),
     )
     await interaction.followup.send(
-        "Started random audio. Every second there is a 1% chance I play a sound.",
+        "Started random audio. Every second there is a "
+        f"{settings.random_sound_chance:.0%} chance I play a sound.",
         ephemeral=True,
     )
 
@@ -210,6 +196,63 @@ def _voice_channel_has_people(
     return any(not member.bot for member in channel.members)
 
 
+async def _get_start_voice_state(
+    interaction: discord.Interaction,
+) -> discord.VoiceState | None:
+    if interaction.guild is None:
+        await interaction.followup.send(
+            "Use this command inside a server.",
+            ephemeral=True,
+        )
+        return None
+
+    if not isinstance(interaction.user, discord.Member):
+        await interaction.followup.send(
+            "I could not find your voice channel.",
+            ephemeral=True,
+        )
+        return None
+
+    voice_state = interaction.user.voice
+    if voice_state is None or voice_state.channel is None:
+        await interaction.followup.send(
+            "Join a voice channel first, then use /start.",
+            ephemeral=True,
+        )
+        return None
+
+    return voice_state
+
+
+async def _play_start_sound(
+    interaction: discord.Interaction,
+    voice_client: discord.VoiceClient,
+) -> bool:
+    try:
+        audio_file = play_random_audio(voice_client)
+    except (
+        discord.ClientException,
+        discord.opus.OpusError,
+        OSError,
+    ) as error:
+        await interaction.followup.send(
+            f"Joined voice, but could not play audio: {error}",
+            ephemeral=True,
+        )
+        return False
+
+    if audio_file is None:
+        await interaction.followup.send(
+            f"No audio files found in {settings.audio_dir}.",
+            ephemeral=True,
+        )
+        return False
+
+    guild_name = interaction.guild.name if interaction.guild is not None else "unknown"
+    logger.info("Playing {} in {}", audio_file.name, guild_name)
+    return True
+
+
 async def _random_sound_loop(guild_id: int) -> None:
     try:
         while True:
@@ -231,7 +274,11 @@ async def _random_sound_loop(guild_id: int) -> None:
             ):
                 try:
                     audio_file = play_random_audio(voice_client)
-                except (discord.ClientException, OSError) as error:
+                except (
+                    discord.ClientException,
+                    discord.opus.OpusError,
+                    OSError,
+                ) as error:
                     logger.error("Could not play audio: {}", error)
                 else:
                     if audio_file is None:

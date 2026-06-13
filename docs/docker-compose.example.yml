@@ -1,11 +1,10 @@
 services:
   heeyaa:
-    image: ghcr.io/eduardogonzalez/heeyaa:latest
+    image: ghcr.io/monsignoreduardo/heeyaa:latest
     restart: unless-stopped
     environment:
       DISCORD_TOKEN: ${DISCORD_TOKEN:?Set DISCORD_TOKEN in your environment or .env file}
       DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID:-}
-      DISCORD_GUILD_ID: ${DISCORD_GUILD_ID:-}
       AUDIO_DIR: /app/data
       CHECK_INTERVAL_SECONDS: ${CHECK_INTERVAL_SECONDS:-1}
       RANDOM_SOUND_CHANCE: ${RANDOM_SOUND_CHANCE:-0.01}

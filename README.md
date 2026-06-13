@@ -104,7 +104,7 @@ The workflow at `.github/workflows/docker-publish.yml` builds a multi-platform i
 It pushes to GitHub Container Registry as:
 
 ```text
-ghcr.io/eduardogonzalez/heeyaa
+ghcr.io/monsignoreduardo/heeyaa
 ```
 
 Images are pushed for default-branch builds, `v*.*.*` tags, and manual workflow runs. Pull requests build the image without pushing it.

@@ -39,7 +39,7 @@ def play_random_audio(voice_client: discord.VoiceClient) -> Path | None:
     if audio_file is None:
         return None
 
-    source = discord.FFmpegPCMAudio(str(audio_file))
+    source = discord.FFmpegOpusAudio(str(audio_file))
     voice_client.play(
         source,
         after=lambda error: (
